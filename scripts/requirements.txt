@@ -1,0 +1,2 @@
+# Dependencias para los scripts de gestión de streams
+requests>=2.25.0
