@@ -54,16 +54,24 @@ export class HybridStreamingService {
       // Organize streams by server
       const serverStreams = new Map();
 
-      // Add HiAnime as default server (always first)
-      if (hiAnimeStreams) {
-        serverStreams.set('hianime', {
-          id: 'hianime',
-          name: 'HiAnime (Default)',
-          priority: 999, // Highest priority
-          isActive: true,
-          streamData: hiAnimeStreams
-        });
-      }
+      // Add HiAnime as default server (ALWAYS present)
+      // Fix: HiAnime should always appear, even if no streams available
+      serverStreams.set('hianime', {
+        id: 'hianime',
+        name: 'HiAnime (Default)',
+        priority: 999, // Highest priority
+        isActive: true,
+        streamData: hiAnimeStreams || {
+          headers: { Referer: "" },
+          tracks: [],
+          intro: { start: 0, end: 0 },
+          outro: { start: 0, end: 0 },
+          sources: [],
+          anilistID: 0,
+          malID: 0
+        },
+        hasStreams: hiAnimeStreams?.sources?.length > 0 || false
+      });
 
       // Add custom servers with their streams
       availableServers.forEach(server => {

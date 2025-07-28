@@ -13,19 +13,30 @@ const nextConfig = {
     ],
   },
   // Fix for HLS.js worker issues - Clean Code: Configuration centralization
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
-      // Handle HLS.js worker files properly
+      // Handle HLS.js worker files properly - Fix MODULE_NOT_FOUND error
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
       };
       
-      // Ensure worker files are handled correctly
+      // Ignore worker imports that cause issues
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^\.\/lib\/worker$/,
+          contextRegExp: /hls\.js/,
+        })
+      );
+
+      // Handle worker files
       config.module.rules.push({
         test: /\.worker\.js$/,
-        use: { loader: 'worker-loader' },
+        type: 'asset/resource',
+        generator: {
+          filename: 'static/worker/[hash][ext][query]',
+        },
       });
     }
     return config;
