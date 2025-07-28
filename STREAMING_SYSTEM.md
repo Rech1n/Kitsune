@@ -2,11 +2,12 @@
 
 Este sistema combina **HiAnime** para obtener metadatos de anime con tu propio sistema de streaming personalizado.
 
-## 🚨 Solución Rápida al Error
+## 🚨 Soluciones Rápidas a Errores Comunes
 
-Si estás viendo el error `Cannot read properties of undefined (reading 'length')`, es porque el sistema está buscando streams pero no encuentra ninguno. Aquí está la solución rápida:
+### Error: "Cannot read properties of undefined (reading 'length')"
+Si ves este error, es porque el sistema está buscando streams pero no encuentra ninguno:
 
-### 1. Agregar streams de prueba:
+#### 1. Agregar streams de prueba:
 ```bash
 # Método 1: Script interactivo (recomendado)
 python scripts/interactive_manager.py
@@ -21,10 +22,60 @@ python scripts/stream_manager.py add-interactive \
   --url "http://yaichi-anime.ddns.net:8080/stream/11588?f02a7c"
 ```
 
-### 2. Verificar que funciona:
+#### 2. Verificar que funciona:
 - Actualiza la página del anime
 - El error debería desaparecer
 - Ahora debería usar TU stream personalizado
+
+### Error: "Cannot find module '/root/.../lib/worker.js'"
+Este error se produce por problemas con HLS.js workers en Next.js:
+
+#### ✅ Solución implementada (COMPLETA):
+
+**1. Next.js Configuration (next.config.mjs):**
+```javascript
+webpack: (config, { isServer, webpack }) => {
+  if (!isServer) {
+    // Deshabilitar TODOS los workers de HLS.js
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /worker/i,
+        contextRegExp: /hls\.js/,
+      })
+    );
+    
+    // Variable de entorno para deshabilitar workers
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.HLS_DISABLE_WORKER': JSON.stringify('true'),
+      })
+    );
+  }
+}
+```
+
+**2. Configuración HLS centralizada (src/lib/hls-config.ts):**
+```typescript
+export function createWorkerFreeHlsConfig() {
+  return {
+    enableWorker: false,           // Deshabilitar workers
+    workerPath: undefined,         // Sin path de worker
+    enableWebVTT: false,          // Sin WebVTT worker
+    enableIMSC1: false,           // Sin IMSC1 worker
+    enableCEA708Captions: false,  // Sin caption worker
+    // ... configuración optimizada
+  };
+}
+```
+
+**3. Para aplicar los cambios:**
+```bash
+# Limpiar cache de Next.js y reiniciar
+rm -rf .next && npm run dev
+```
+
+### HiAnime no aparece por defecto
+**✅ Solucionado**: HiAnime ahora siempre aparece como servidor por defecto, incluso si no hay streams disponibles.
 
 ---#### ⚡ Línea de comandos (Para automatización):
 ```bash

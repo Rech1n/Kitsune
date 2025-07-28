@@ -12,32 +12,37 @@ const nextConfig = {
       },
     ],
   },
-  // Fix for HLS.js worker issues - Clean Code: Configuration centralization
+  // Fix for HLS.js worker issues - COMPLETE FIX for MODULE_NOT_FOUND
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
-      // Handle HLS.js worker files properly - Fix MODULE_NOT_FOUND error
+      // Complete solution: Disable HLS.js workers entirely
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
       };
       
-      // Ignore worker imports that cause issues
+      // Ignore ALL worker-related imports from HLS.js
       config.plugins.push(
         new webpack.IgnorePlugin({
-          resourceRegExp: /^\.\/lib\/worker$/,
+          resourceRegExp: /worker/i,
           contextRegExp: /hls\.js/,
         })
       );
 
-      // Handle worker files
-      config.module.rules.push({
-        test: /\.worker\.js$/,
-        type: 'asset/resource',
-        generator: {
-          filename: 'static/worker/[hash][ext][query]',
-        },
-      });
+      // Additional ignore for specific worker paths
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^\.\/lib\/worker.*$/,
+        })
+      );
+
+      // Define HLS_DISABLE_WORKER to disable workers completely
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'process.env.HLS_DISABLE_WORKER': JSON.stringify('true'),
+        })
+      );
     }
     return config;
   },

@@ -10,6 +10,7 @@ import React, {
 import Artplayer from "artplayer";
 import type { Option } from "artplayer/types/option";
 import Hls from "hls.js";
+import { createWorkerFreeHls, isHlsSupported, cleanupHls } from "@/lib/hls-config";
 
 // Helper functions and types (keep or import from your types file)
 import { IEpisodeServers, IEpisodeSource, IEpisodes } from "@/types/episodes"; // Adjust path as needed
@@ -211,7 +212,7 @@ function KitsunePlayer({
     if (!artContainerRef.current || !uri) {
       // Clean up previous instances if URI becomes invalid or ref detach
       if (hlsInstanceRef.current) {
-        hlsInstanceRef.current.destroy();
+        cleanupHls(hlsInstanceRef.current);
         hlsInstanceRef.current = null;
       }
       if (artInstanceRef.current) {
@@ -336,21 +337,14 @@ function KitsunePlayer({
           url: string,
           artPlayerInstance: Artplayer,
         ) => {
-          if (Hls.isSupported()) {
+          if (isHlsSupported()) {
             // Destroy previous HLS instance if attached to this player
             if (hlsInstanceRef.current) {
-              hlsInstanceRef.current.destroy();
+              cleanupHls(hlsInstanceRef.current);
             }
             
-            // Configure HLS.js to avoid worker issues in Next.js - Clean Code: Defensive programming
-            const hlsConfig = {
-              enableWorker: false, // Disable worker to avoid module not found errors
-              debug: false,
-              lowLatencyMode: true,
-              backBufferLength: 90,
-            };
-            
-            const hls = new Hls(hlsConfig);
+            // Use centralized worker-free HLS configuration
+            const hls = createWorkerFreeHls();
             hls.loadSource(url);
             hls.attachMedia(videoElement);
             hlsInstanceRef.current = hls; // Store ref
@@ -371,7 +365,7 @@ function KitsunePlayer({
                     break;
                   default:
                     console.error('❌ Fatal HLS error, destroying instance');
-                    hls.destroy();
+                    cleanupHls(hls);
                     break;
                 }
               }
@@ -381,7 +375,7 @@ function KitsunePlayer({
             artPlayerInstance.on("destroy", () => {
               if (hlsInstanceRef.current === hls) {
                 // Check if it's the same instance
-                hls.destroy();
+                cleanupHls(hls);
                 hlsInstanceRef.current = null;
                 currentHlsInstanceForCleanup = null;
                 console.log(
@@ -724,13 +718,8 @@ function KitsunePlayer({
       const hls = hlsInstanceRef.current; // Get HLS ref
 
       if (hls) {
-        console.log("Cleanup: Detaching HLS media");
-        // Although hls.destroy() calls detachMedia, being explicit can sometimes help timing
-        if (hls.media) {
-          hls.detachMedia();
-        }
-        console.log("Cleanup: Destroying HLS instance.");
-        hls.destroy();
+        console.log("Cleanup: Destroying HLS instance with safe cleanup");
+        cleanupHls(hls);
         hlsInstanceRef.current = null;
       }
 
@@ -789,7 +778,7 @@ function KitsunePlayer({
             "Cleanup: currentHlsInstanceForCleanup was null, attempting to destroy hlsInstanceRef.current for ArtPlayer:",
             art.id,
           );
-          hlsInstanceRef.current.destroy();
+          cleanupHls(hlsInstanceRef.current);
           hlsInstanceRef.current = null;
         }
 
