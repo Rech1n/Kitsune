@@ -341,11 +341,42 @@ function KitsunePlayer({
             if (hlsInstanceRef.current) {
               hlsInstanceRef.current.destroy();
             }
-            const hls = new Hls();
+            
+            // Configure HLS.js to avoid worker issues in Next.js - Clean Code: Defensive programming
+            const hlsConfig = {
+              enableWorker: false, // Disable worker to avoid module not found errors
+              debug: false,
+              lowLatencyMode: true,
+              backBufferLength: 90,
+            };
+            
+            const hls = new Hls(hlsConfig);
             hls.loadSource(url);
             hls.attachMedia(videoElement);
             hlsInstanceRef.current = hls; // Store ref
             currentHlsInstanceForCleanup = hls; // Store for cleanup
+            
+            // Enhanced error handling - SRP: Single responsibility for error handling
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              console.error('🚨 HLS Error:', data);
+              if (data.fatal) {
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log('🔄 Network error, attempting recovery...');
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log('🔄 Media error, attempting recovery...');
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    console.error('❌ Fatal HLS error, destroying instance');
+                    hls.destroy();
+                    break;
+                }
+              }
+            });
+            
             // Make sure HLS instance is destroyed when ArtPlayer instance is destroyed
             artPlayerInstance.on("destroy", () => {
               if (hlsInstanceRef.current === hls) {

@@ -12,6 +12,24 @@ const nextConfig = {
       },
     ],
   },
+  // Fix for HLS.js worker issues - Clean Code: Configuration centralization
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Handle HLS.js worker files properly
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+      
+      // Ensure worker files are handled correctly
+      config.module.rules.push({
+        test: /\.worker\.js$/,
+        use: { loader: 'worker-loader' },
+      });
+    }
+    return config;
+  },
 };
 
 export default withPWA({
