@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 """
-Kitsune Stream Manager - Modo Interactivo
+Kitsune St        pr        print("2. 📁 Agregar múltiples streams")
+        print("3. 🎬 Generar serie completa")
+        print("4. 🎌 Buscar anime por nombre")
+        print("5. 🖥️  Gestionar servidores")
+        print("6. 📊 Ver estadísticas")
+        print("7. 🗑️  Eliminar stream")
+        print("8. 📄 Crear archivo de ejemplo")
+        print("9. ⚙️  Configurar URL del servidor")
+        print("0. 🚪 Salir")📺 Agregar stream individual")
+        print("2. 📁 Agregar múltiples streams")
+        print("3. 🎬 Generar serie completa")
+        print("4. 🔍 Buscar anime por nombre")
+        print("5. 🖥️  Gestionar servidores")
+        print("6. 📊 Ver estadísticas")
+        print("7. 🗑️  Eliminar stream")
+        print("8. 📄 Crear archivo de ejemplo")
+        print("9. ⚙️  Configurar URL del servidor")
+        print("0. 🚪 Salir")ger - Modo Interactivo
 Script simple para gestionar streams sin línea de comandos
 
 Solo ejecuta: python interactive_manager.py
@@ -40,7 +57,7 @@ class InteractiveStreamManager:
         print("1. 📺 Agregar stream individual")
         print("2. 📁 Agregar múltiples streams")
         print("3. 🎬 Generar serie completa")
-        print("4. � Buscar anime por nombre")
+        print("4. 🎌 Buscar anime por nombre")
         print("5. �📊 Ver estadísticas")
         print("6. 🗑️  Eliminar stream")
         print("7. 📄 Crear archivo de ejemplo")
@@ -484,6 +501,137 @@ class InteractiveStreamManager:
             desc = description[:200] + "..." if len(description) > 200 else description
             print(f"📝 Descripción: {desc}")
     
+    def manage_servers(self):
+        """Gestionar servidores disponibles"""
+        print("\n🖥️  GESTIÓN DE SERVIDORES")
+        print("-" * 30)
+        
+        print("🔧 Servidores configurados:")
+        servers = [
+            {"id": "hianime", "name": "HiAnime (Default)", "priority": 999, "active": True, "type": "default"},
+            {"id": "yaichi-anime", "name": "Yaichi", "priority": 3, "active": True, "type": "custom"},
+            {"id": "bluease", "name": "Bluease", "priority": 2, "active": True, "type": "custom"},
+            {"id": "custom-server-1", "name": "Custom Server 1", "priority": 1, "active": False, "type": "custom"}
+        ]
+        
+        for i, server in enumerate(servers, 1):
+            status = "✅ Activo" if server["active"] else "❌ Inactivo"
+            server_type = "🌐 Default" if server["type"] == "default" else "🔧 Personalizado"
+            print(f"{i:2d}. {server['name']} ({server['id']})")
+            print(f"    {status} | Prioridad: {server['priority']} | {server_type}")
+            print()
+        
+        print("¿Qué deseas hacer?")
+        print("1. 📊 Ver estadísticas de servidores")
+        print("2. 🔧 Configurar servidor personalizado")
+        print("3. 📺 Probar streams de un servidor")
+        print("4. 🔄 Volver al menú principal")
+        
+        choice = input("Selecciona opción (1-4): ").strip()
+        
+        if choice == "1":
+            self.show_server_stats()
+        elif choice == "2":
+            self.configure_custom_server()
+        elif choice == "3":
+            self.test_server_streams()
+        else:
+            print("🔄 Volviendo al menú principal...")
+    
+    def show_server_stats(self):
+        """Mostrar estadísticas de servidores"""
+        print("\n📊 ESTADÍSTICAS DE SERVIDORES")
+        print("-" * 40)
+        
+        try:
+            response = requests.get(f"{self.api_url}?action=stats", timeout=30)
+            
+            if response.status_code == 200:
+                stats = response.json().get('stats', {})
+                streams_by_server = stats.get('streamsByServer', {})
+                
+                print(f"📈 Total de streams: {stats.get('totalStreams', 0)}")
+                print(f"✅ Streams activos: {stats.get('activeStreams', 0)}")
+                print("\n🖥️  Distribución por servidor:")
+                
+                for server_id, count in streams_by_server.items():
+                    server_name = self.get_server_display_name(server_id)
+                    print(f"  - {server_name}: {count} streams")
+                
+                if not streams_by_server:
+                    print("  📭 No hay streams personalizados configurados")
+                    print("  💡 Usa HiAnime como fallback por defecto")
+                    
+            else:
+                print(f"❌ Error {response.status_code}: {response.text}")
+                
+        except requests.RequestException as e:
+            print(f"❌ Error de conexión: {e}")
+    
+    def get_server_display_name(self, server_id: str) -> str:
+        """Obtener nombre amigable del servidor"""
+        server_names = {
+            "yaichi-anime": "Yaichi",
+            "bluease": "Bluease", 
+            "custom-server-1": "Custom Server 1",
+            "hianime": "HiAnime (Default)"
+        }
+        return server_names.get(server_id, server_id)
+    
+    def configure_custom_server(self):
+        """Configurar un servidor personalizado"""
+        print("\n🔧 CONFIGURAR SERVIDOR PERSONALIZADO")
+        print("-" * 40)
+        
+        print("📝 Servidores disponibles para configurar:")
+        print("1. Yaichi - http://yaichi-anime.ddns.net:8080")
+        print("2. Bluease - Configurar URL personalizada")
+        print("3. Custom Server 1 - Nuevo servidor")
+        
+        server_choice = input("Selecciona servidor (1-3): ").strip()
+        
+        if server_choice == "1":
+            print("✅ Yaichi ya está configurado por defecto")
+            print("   URL: http://yaichi-anime.ddns.net:8080/stream/{ID}?f02a7c")
+        elif server_choice == "2":
+            url = input("🔗 URL base para Bluease: ").strip()
+            token = input("🔑 Token por defecto: ").strip()
+            print(f"✅ Bluease configurado: {url}")
+        elif server_choice == "3":
+            name = input("📝 Nombre del servidor: ").strip()
+            url = input("🔗 URL base: ").strip()
+            token = input("🔑 Token por defecto: ").strip()
+            print(f"✅ {name} configurado: {url}")
+        else:
+            print("❌ Opción inválida")
+    
+    def test_server_streams(self):
+        """Probar streams de un servidor específico"""
+        print("\n🧪 PROBAR STREAMS DE SERVIDOR")
+        print("-" * 30)
+        
+        print("🖥️  Selecciona servidor a probar:")
+        print("1. HiAnime (Default)")
+        print("2. Yaichi")
+        print("3. Bluease")
+        
+        server_choice = input("Selecciona servidor (1-3): ").strip()
+        anime_id = input("🎌 ID del anime para probar: ").strip()
+        episode = input("📺 Número de episodio: ").strip()
+        
+        server_map = {
+            "1": "hianime",
+            "2": "yaichi-anime", 
+            "3": "bluease"
+        }
+        
+        selected_server = server_map.get(server_choice, "hianime")
+        
+        print(f"\n🔍 Probando {self.get_server_display_name(selected_server)}...")
+        print(f"   Anime: {anime_id}")
+        print(f"   Episodio: {episode}")
+        print("⚠️  Esta función está en desarrollo")
+    
     def configure_server(self):
         """Configurar URL del servidor"""
         print(f"\n⚙️  URL actual: {self.base_url}")
@@ -541,15 +689,17 @@ class InteractiveStreamManager:
             elif choice == "4":
                 self.search_anime_by_name()
             elif choice == "5":
-                self.show_stats()
+                self.manage_servers()
             elif choice == "6":
+                self.show_stats()
+            elif choice == "7":
                 stream_id = input("🗑️  ID del stream a eliminar: ").strip()
                 if stream_id:
                     # Aquí iría la lógica para eliminar
                     print("⚠️  Funcionalidad en desarrollo")
-            elif choice == "7":
-                self.create_sample_file()
             elif choice == "8":
+                self.create_sample_file()
+            elif choice == "9":
                 self.configure_server()
             elif choice == "0":
                 print("👋 ¡Hasta luego!")

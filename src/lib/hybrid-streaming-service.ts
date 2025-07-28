@@ -13,7 +13,97 @@ import {
 export class HybridStreamingService {
   
   /**
-   * Get episode streaming data with custom streams prioritized
+   * Get episode streaming data with custom streams organized by server
+   * @param episodeId - HiAnime episode ID
+   * @param animeId - Your internal anime ID
+   * @param episodeNumber - Episode number
+   * @param category - Stream category (sub/dub/raw)
+   */
+  public async getEpisodeStreamsWithServers(
+    episodeId: string,
+    animeId: string,
+    episodeNumber: number,
+    category: "sub" | "dub" | "raw" = "sub"
+  ) {
+    try {
+      // Get custom streams from all servers
+      const customStreams = customStreamService.getEpisodeStreams(animeId, episodeNumber);
+      const filteredCustomStreams = customStreams.filter(stream => 
+        stream.language.type === category && stream.isActive
+      );
+
+      // Get available servers
+      const availableServers = customStreamService.getActiveServers();
+
+      // Get HiAnime streams as fallback
+      let hiAnimeStreams: any = null;
+      try {
+        const hiAnimeData = await hianime.getEpisodeSources(
+          decodeURIComponent(episodeId),
+          undefined,
+          category
+        );
+        
+        if (hiAnimeData && hiAnimeData.sources && hiAnimeData.sources.length > 0) {
+          hiAnimeStreams = hiAnimeData;
+        }
+      } catch (error) {
+        console.warn('HiAnime streams not available:', error);
+      }
+
+      // Organize streams by server
+      const serverStreams = new Map();
+
+      // Add HiAnime as default server (always first)
+      if (hiAnimeStreams) {
+        serverStreams.set('hianime', {
+          id: 'hianime',
+          name: 'HiAnime (Default)',
+          priority: 999, // Highest priority
+          isActive: true,
+          streamData: hiAnimeStreams
+        });
+      }
+
+      // Add custom servers with their streams
+      availableServers.forEach(server => {
+        const serverCustomStreams = filteredCustomStreams.filter(stream => 
+          stream.server === server.id
+        );
+
+        if (serverCustomStreams.length > 0) {
+          serverStreams.set(server.id, {
+            id: server.id,
+            name: server.name,
+            priority: server.priority,
+            isActive: server.isActive,
+            streams: serverCustomStreams,
+            streamData: this.convertCustomStreamToHiAnimeFormat(serverCustomStreams[0])
+          });
+        }
+      });
+
+      // Convert to array and sort by priority
+      const serversArray = Array.from(serverStreams.values())
+        .sort((a, b) => b.priority - a.priority);
+
+      return {
+        episodeId,
+        animeId,
+        episodeNumber,
+        availableServers: serversArray,
+        totalServers: serversArray.length,
+        hasCustomStreams: filteredCustomStreams.length > 0,
+        hasHiAnimeStreams: !!hiAnimeStreams
+      };
+    } catch (error) {
+      console.error('Error getting episode streams with servers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get episode streaming data with custom streams prioritized (legacy method)
    * @param episodeId - HiAnime episode ID
    * @param animeId - Your internal anime ID
    * @param episodeNumber - Episode number
@@ -26,37 +116,111 @@ export class HybridStreamingService {
     category: "sub" | "dub" | "raw" = "sub"
   ): Promise<EpisodeStreamResponse> {
     try {
-      // Get custom streams first (prioritized)
-      const customStreams = customStreamService.getEpisodeStreams(animeId, episodeNumber);
+      const serverData = await this.getEpisodeStreamsWithServers(episodeId, animeId, episodeNumber, category);
       
-      // Filter custom streams by language category
-      const filteredCustomStreams = customStreams.filter(stream => 
-        stream.language.type === category && stream.isActive
-      );
-
-      // Get HiAnime streams as fallback
-      let fallbackStreams: any[] = [];
-      try {
-        const hiAnimeData = await hianime.getEpisodeSources(
-          decodeURIComponent(episodeId),
-          undefined,
-          category
-        );
-        fallbackStreams = hiAnimeData.sources || [];
-      } catch (error) {
-        console.warn('HiAnime fallback failed:', error);
+      // Convert back to legacy format for compatibility
+      const customStreams = [];
+      const fallbackStreams = [];
+      
+      for (const server of serverData.availableServers) {
+        if (server.id === 'hianime') {
+          fallbackStreams.push(server.streamData);
+        } else if (server.streams) {
+          customStreams.push(...server.streams);
+        }
       }
 
       return {
         episodeId,
         animeId,
         episodeNumber,
-        availableStreams: filteredCustomStreams,
+        availableStreams: customStreams,
         fallbackStreams
       };
     } catch (error) {
       console.error('Error getting episode streams:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get specific server stream for episode
+   * @param episodeId - Episode ID
+   * @param animeId - Anime ID
+   * @param episodeNumber - Episode number
+   * @param serverId - Server ID ('hianime', 'yaichi-anime', etc.)
+   * @param category - Stream category
+   */
+  public async getStreamByServer(
+    episodeId: string,
+    animeId: string,
+    episodeNumber: number,
+    serverId: string,
+    category: "sub" | "dub" | "raw" = "sub"
+  ) {
+    try {
+      const serverData = await this.getEpisodeStreamsWithServers(episodeId, animeId, episodeNumber, category);
+      
+      const selectedServer = serverData.availableServers.find(server => server.id === serverId);
+      
+      if (!selectedServer) {
+        throw new Error(`Server ${serverId} not found or has no streams available`);
+      }
+
+      return selectedServer.streamData;
+    } catch (error) {
+      console.error(`Error getting stream from server ${serverId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all available servers for an episode
+   * @param animeId - Anime ID
+   * @param episodeNumber - Episode number
+   */
+  public async getAvailableServersForEpisode(animeId: string, episodeNumber: number) {
+    try {
+      // Get custom streams
+      const customStreams = customStreamService.getEpisodeStreams(animeId, episodeNumber);
+      const activeCustomStreams = customStreams.filter(stream => stream.isActive);
+      
+      // Get available custom servers
+      const availableServers = customStreamService.getActiveServers();
+      
+      // Filter servers that have streams for this episode
+      const serversWithStreams = availableServers.filter(server => 
+        activeCustomStreams.some(stream => stream.server === server.id)
+      );
+
+      // Always include HiAnime as available
+      const allServers = [
+        {
+          id: 'hianime',
+          name: 'HiAnime (Default)',
+          priority: 999,
+          isActive: true,
+          hasStreams: true
+        },
+        ...serversWithStreams.map(server => ({
+          id: server.id,
+          name: server.name,
+          priority: server.priority,
+          isActive: server.isActive,
+          hasStreams: true
+        }))
+      ].sort((a, b) => b.priority - a.priority);
+
+      return allServers;
+    } catch (error) {
+      console.error('Error getting available servers:', error);
+      return [{
+        id: 'hianime',
+        name: 'HiAnime (Default)',  
+        priority: 999,
+        isActive: true,
+        hasStreams: true
+      }];
     }
   }
 
@@ -175,6 +339,67 @@ export class HybridStreamingService {
    */
   public getStreamingStats() {
     return customStreamService.getStreamStats();
+  }
+
+  /**
+   * Convert custom stream to HiAnime format for compatibility
+   * @param customStream - Custom stream to convert
+   */
+  private convertCustomStreamToHiAnimeFormat(customStream: CustomStreamSource): any {
+    return {
+      headers: { Referer: "" },
+      tracks: [],
+      intro: { start: 0, end: 0 },
+      outro: { start: 0, end: 0 },
+      sources: [
+        {
+          url: customStream.streamUrl,
+          quality: customStream.quality.resolution,
+          isM3U8: customStream.streamUrl.includes('.m3u8')
+        }
+      ],
+      anilistID: 0,
+      malID: 0
+    };
+  }
+
+  /**
+   * Get the best available stream for an episode
+   * Prioritizes custom streams, falls back to HiAnime
+   */
+  public async getBestAvailableStream(
+    episodeId: string,
+    animeId: string,
+    episodeNumber: number,
+    category: "sub" | "dub" | "raw" = "sub"
+  ) {
+    try {
+      const streamData = await this.getEpisodeStreams(episodeId, animeId, episodeNumber, category);
+      
+      // If we have custom streams, return the first one in HiAnime format
+      if (streamData.availableStreams && streamData.availableStreams.length > 0) {
+        return this.convertCustomStreamToHiAnimeFormat(streamData.availableStreams[0]);
+      }
+      
+      // If we have fallback streams, return the first one
+      if (streamData.fallbackStreams && streamData.fallbackStreams.length > 0) {
+        return streamData.fallbackStreams[0];
+      }
+      
+      // Return empty structure if nothing is available
+      return {
+        headers: { Referer: "" },
+        tracks: [],
+        intro: { start: 0, end: 0 },
+        outro: { start: 0, end: 0 },
+        sources: [],
+        anilistID: 0,
+        malID: 0
+      };
+    } catch (error) {
+      console.error('Error getting best available stream:', error);
+      throw error;
+    }
   }
 
   /**

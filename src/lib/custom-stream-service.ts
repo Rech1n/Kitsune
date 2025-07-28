@@ -23,15 +23,33 @@ export class CustomStreamService {
    * Following Open/Closed Principle - easy to extend with new servers
    */
   private initializeDefaultServers(): void {
-    const defaultServer: StreamServer = {
-      id: "yaichi-anime",
-      name: "Yaichi Anime Server",
-      baseUrl: "http://yaichi-anime.ddns.net:8080",
-      isActive: true,
-      priority: 1
-    };
+    const defaultServers: StreamServer[] = [
+      {
+        id: "yaichi-anime",
+        name: "Yaichi",
+        baseUrl: "http://yaichi-anime.ddns.net:8080",
+        isActive: true,
+        priority: 3
+      },
+      {
+        id: "bluease",
+        name: "Bluease", 
+        baseUrl: "http://bluease.example.com:8080",
+        isActive: true,
+        priority: 2
+      },
+      {
+        id: "custom-server-1",
+        name: "Custom Server 1",
+        baseUrl: "http://custom1.example.com:8080", 
+        isActive: false,
+        priority: 1
+      }
+    ];
 
-    this.servers.set(defaultServer.id, defaultServer);
+    defaultServers.forEach(server => {
+      this.servers.set(server.id, server);
+    });
   }
 
   /**

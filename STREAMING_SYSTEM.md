@@ -1,6 +1,32 @@
 # Sistema de Streaming Híbrido
 
-Este sistema combina **HiAnime** para#### ⚡ Línea de comandos (Para automatización):
+Este sistema combina **HiAnime** para obtener metadatos de anime con tu propio sistema de streaming personalizado.
+
+## 🚨 Solución Rápida al Error
+
+Si estás viendo el error `Cannot read properties of undefined (reading 'length')`, es porque el sistema está buscando streams pero no encuentra ninguno. Aquí está la solución rápida:
+
+### 1. Agregar streams de prueba:
+```bash
+# Método 1: Script interactivo (recomendado)
+python scripts/interactive_manager.py
+# → Opción 4: Buscar anime por nombre
+# → Buscar el anime que estás viendo
+# → Agregar streams para los episodios
+
+# Método 2: Línea de comandos rápida
+python scripts/stream_manager.py add-interactive \
+  --search "nombre del anime" \
+  --episode 1 \
+  --url "http://yaichi-anime.ddns.net:8080/stream/11588?f02a7c"
+```
+
+### 2. Verificar que funciona:
+- Actualiza la página del anime
+- El error debería desaparecer
+- Ahora debería usar TU stream personalizado
+
+---#### ⚡ Línea de comandos (Para automatización):
 ```bash
 # Buscar anime por nombre
 python scripts/stream_manager.py search --query "attack on titan"

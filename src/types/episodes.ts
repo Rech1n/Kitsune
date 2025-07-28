@@ -22,6 +22,35 @@ export interface IEpisodeSource {
   malID: number;
 }
 
+// Nueva interfaz para respuesta híbrida
+export interface IHybridEpisodeResponse {
+  episodeId: string;
+  animeId: string;
+  episodeNumber: number;
+  availableStreams: CustomStreamSource[];
+  fallbackStreams?: IEpisodeSource[];
+}
+
+// Interfaz para streams personalizados
+export interface CustomStreamSource {
+  id: string;
+  animeId: string;
+  episodeNumber: number;
+  streamUrl: string;
+  quality: {
+    resolution: "480p" | "720p" | "1080p" | "1440p" | "4K";
+    bitrate?: number;
+  };
+  language: {
+    type: "sub" | "dub" | "raw";
+    language?: string;
+  };
+  server: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IEpisodeServers {
   episodeId: string;
   episodeNo: string;

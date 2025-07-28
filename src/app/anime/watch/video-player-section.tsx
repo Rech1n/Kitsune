@@ -34,7 +34,7 @@ const VideoPlayerSection = () => {
     setKey(key);
   }, [serversData]);
 
-  const { data: episodeData, isLoading } = useGetEpisodeData(
+  const { data: episodeData, isLoading, error } = useGetEpisodeData(
     selectedEpisode,
     serverName,
     key,
@@ -124,7 +124,43 @@ const VideoPlayerSection = () => {
       <div className="h-auto aspect-video lg:max-h-[calc(100vh-150px)] min-h-[20vh] sm:min-h-[30vh] md:min-h-[40vh] lg:min-h-[60vh] w-full animate-pulse bg-slate-700 rounded-md"></div>
     );
 
-  return !episodeData || episodeData?.sources.length === 0 ? (
+  // Verificar si hay datos del episodio y si hay sources disponibles
+  const hasValidSources = episodeData && 
+    episodeData.sources && 
+    Array.isArray(episodeData.sources) && 
+    episodeData.sources.length > 0;
+
+  // Debug logging para ayudar con troubleshooting
+  useEffect(() => {
+    if (episodeData) {
+      console.log('Episode data received:', {
+        hasData: !!episodeData,
+        hasSources: !!episodeData.sources,
+        sourcesLength: episodeData.sources?.length || 0,
+        sources: episodeData.sources
+      });
+    }
+    if (error) {
+      console.error('Error loading episode data:', error);
+    }
+  }, [episodeData, error]);
+
+  // Mostrar error si existe
+  if (error) {
+    return (
+      <div className="relative w-full h-auto aspect-video min-h-[20vh] sm:min-h-[30vh] md:min-h-[40vh] lg:min-h-[60vh] max-h-[500px] lg:max-h-[calc(100vh-150px)] bg-black overflow-hidden p-4 flex items-center justify-center">
+        <Alert className="w-full max-w-md">
+          <AlertCircleIcon className="h-4 w-4" />
+          <AlertTitle>Error al cargar el episodio</AlertTitle>
+          <AlertDescription>
+            No se pudo cargar el video. Por favor, intenta con otro servidor o recarga la página.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return !episodeData || !hasValidSources ? (
     <>
       <div
         className={
